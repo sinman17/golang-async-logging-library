@@ -23,7 +23,7 @@ func TestNewInitializesShutdownChannelsModule3(t *testing.T) {
 
 func TestShutdownMethodModule3(t *testing.T) {
 	alog := New(nil)
-	alog.shutdownCompleteCh = make(chan struct{}, 1)
+	alog.shutdownCompleteCh = make(chan bool, 1)
 	alog.shutdown()
 	time.Sleep(100 * time.Millisecond)
 	select {
@@ -47,10 +47,10 @@ func TestShutdownMethodModule3(t *testing.T) {
 func TestStartMethodCallsShutdownModule3(t *testing.T) {
 	b := bytes.NewBuffer([]byte{})
 	alog := New(b)
-	alog.shutdownCh = make(chan struct{}, 1)
-	alog.shutdownCompleteCh = make(chan struct{}, 1)
+	alog.shutdownCh = make(chan bool, 1)
+	alog.shutdownCompleteCh = make(chan bool, 1)
 	go alog.Start()
-	alog.shutdownCh <- struct{}{}
+	alog.shutdownCh <- true
 	time.Sleep(100 * time.Millisecond)
 
 	select {
@@ -77,9 +77,9 @@ func TestStartMethodCallsShutdownModule3(t *testing.T) {
 
 func TestStopMethodModule3(t *testing.T) {
 	alog := New(nil)
-	alog.shutdownCh = make(chan struct{}, 1)
-	alog.shutdownCompleteCh = make(chan struct{}, 1)
-	alog.shutdownCompleteCh <- struct{}{}
+	alog.shutdownCh = make(chan bool, 1)
+	alog.shutdownCompleteCh = make(chan bool, 1)
+	alog.shutdownCompleteCh <- true
 	alog.Stop()
 	select {
 	case <-alog.shutdownCh:

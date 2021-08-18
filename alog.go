@@ -18,8 +18,8 @@ type Alog struct {
 	m                  *sync.Mutex
 	msgCh              chan string
 	errorCh            chan error
-	shutdownCh         chan struct{}
-	shutdownCompleteCh chan struct{}
+	shutdownCh         chan bool
+	shutdownCompleteCh chan bool
 }
 
 // New creates a new Alog object that writes to the provided io.Writer.
@@ -27,11 +27,14 @@ type Alog struct {
 func New(w io.Writer) *Alog {
 	msgCh := make(chan string)
 	errorCh := make(chan error)
+	shutdownCh := make(chan bool)
+	shutdownCompleteCh := make(chan bool)
 	if w == nil {
 		w = os.Stdout
 	}
 	return &Alog{
 		dest:               w,
+		m:                  &sync.Mutex{},
 		msgCh:              msgCh,
 		errorCh:            errorCh,
 		shutdownCh:         shutdownCh,
@@ -42,17 +45,18 @@ func New(w io.Writer) *Alog {
 // Start begins the message loop for the asynchronous logger. It should be initiated as a goroutine to prevent
 // the caller from being blocked.
 func (al Alog) Start() {
-	var wg sync.WaitGroup 
+	var wg sync.WaitGroup
+outerloop:
 	for {
 		select {
 		case <-al.msgCh:
-			Waitgroup.Add()
+			wg.Add(1)
 			al.write(<-al.msgCh, &wg)
-			Waitgroup.Done()
+			wg.Done()
 		case <-al.shutdownCh:
-			Waitgroup.Wait()
+			wg.Wait()
 			al.shutdown()
-			break
+			break outerloop
 		}
 	}
 }
@@ -66,16 +70,16 @@ func (al Alog) formatMessage(msg string) string {
 
 func (al Alog) write(msg string, wg *sync.WaitGroup) {
 	formattedMessage := al.formatMessage(msg)
-	m.Lock()
+	al.m.Lock()
 	_, err := al.dest.Write([]byte(formattedMessage))
-	m.Unlock()
+	al.m.Unlock()
 	al.errorCh <- err
 	wg.Done()
 }
 
 func (al Alog) shutdown() {
 	close(al.msgCh)
-	al.shutdownCompleteCh <- 
+	al.shutdownCompleteCh <- true
 }
 
 // MessageChannel returns a channel that accepts messages that should be written to the log.
@@ -93,8 +97,8 @@ func (al Alog) ErrorChannel() chan error {
 // Stop shuts down the logger. It will wait for all pending messages to be written and then return.
 // The logger will no longer function after this method has been called.
 func (al Alog) Stop() {
-	al.shutdownCh<-
-	sync.WaitGroup.Wait(shutdownCompleteCh)
+	al.shutdownCh <- true
+	<-al.shutdownCompleteCh
 }
 
 // Write synchronously sends the message to the log output
