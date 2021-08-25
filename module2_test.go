@@ -3,6 +3,7 @@ package alog
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"sync"
@@ -114,6 +115,7 @@ func TestStartHandlesMessagesModule2(t *testing.T) {
 	alog.msgCh <- "test message"
 	time.Sleep(100 * time.Millisecond)
 	written := b.Bytes()
+	fmt.Println(written)
 	if !regexp.MustCompile(messageTimestampPattern + "test message\n$").Match(written) {
 		t.Error("Message not written to logger's destination")
 	}

@@ -50,11 +50,13 @@ outerloop:
 	for {
 		select {
 		case <-al.msgCh:
-			wg.Add(1)
-			al.write(<-al.msgCh, &wg)
-			wg.Done()
+			go func() {
+				fmt.Println("write")
+				al.write(<-al.msgCh, &wg)
+				fmt.Println("written")
+
+			}()
 		case <-al.shutdownCh:
-			wg.Wait()
 			al.shutdown()
 			break outerloop
 		}
@@ -70,13 +72,17 @@ func (al Alog) formatMessage(msg string) string {
 
 func (al Alog) write(msg string, wg *sync.WaitGroup) {
 	formattedMessage := al.formatMessage(msg)
+
+	fmt.Printf("Locking %s \n", formattedMessage)
 	al.m.Lock()
+	fmt.Printf("locked - formatted message %s \n", formattedMessage)
 
 	_, err := al.dest.Write([]byte(formattedMessage))
+	fmt.Printf("formatted message %s \n", formattedMessage)
+
 	al.m.Unlock()
-	if err != nil {
-		al.errorCh <- err
-	}
+
+	al.errorCh <- err
 	wg.Done()
 }
 
