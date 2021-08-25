@@ -82,7 +82,10 @@ func (al Alog) write(msg string, wg *sync.WaitGroup) {
 
 	al.m.Unlock()
 
-	al.errorCh <- err
+	go func(err error) {
+		al.errorCh <- err
+	}(err)
+
 	wg.Done()
 }
 
